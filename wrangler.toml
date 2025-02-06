@@ -1,3 +1,8 @@
 name = "hono-hello-world"
-main = "src/index.ts"
-compatibility_date = "2025-02-06"
+type = "javascript"
+main = "./src/index.ts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "contacts_db"
+database_id = "6d663581-85fe-4ce7-8f75-5c23548efb9d"
