@@ -11,3 +11,9 @@ database_id = "6d663581-85fe-4ce7-8f75-5c23548efb9d"
 [[kv_namespaces]]
 binding = "CONTACT_CACHE"
 id = "42c8fb63c1c345789f87de19980b5742"
+
+# R2 Bucket binding (Cloudflare R2)
+[[r2_buckets]]
+binding = "R2_BUCKET"          # Variable name in Worker
+bucket_name = "photos"         # Name of the R2 bucket
+preview_bucket_name = "photos" # Preview bucket (optional)
