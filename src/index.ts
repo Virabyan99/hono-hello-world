@@ -3,6 +3,9 @@ import apiRoutes from "./app/api/index"; // ✅ Import API routes
 
 const app = new Hono();
 
+app.get('/', (c) => c.text('Hello, World!')); // ✅ This will respond with "Hello, World!"
+
+
 // ==========================
 // Logging Middleware
 // ==========================

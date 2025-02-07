@@ -17,3 +17,5 @@ id = "42c8fb63c1c345789f87de19980b5742"
 binding = "R2_BUCKET"          # Variable name in Worker
 bucket_name = "photos"         # Name of the R2 bucket
 preview_bucket_name = "photos" # Preview bucket (optional)
+
+# https://hono-hello-world.gmparstone99.workers.dev
