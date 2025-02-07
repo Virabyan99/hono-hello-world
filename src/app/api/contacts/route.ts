@@ -2,6 +2,16 @@ import { Hono } from 'hono'
 
 const contactsAPI = new Hono()
 
+// Authentication Middleware to Protect Routes
+contactsAPI.use("*", async (c, next) => {
+  const authHeader = c.req.header("Authorization");
+  // Check for Bearer token and compare it to a valid one (e.g., 'Bearer my-secret-token')
+  if (!authHeader || authHeader !== "Bearer my-secret-token") {
+    return c.json({ error: "Unauthorized: Invalid or missing token." }, 401);
+  }
+  return await next();
+});
+
 // 📌 Create Contact (POST /api/contacts)
 contactsAPI.post('/', async (c) => {
   try {
