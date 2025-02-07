@@ -107,60 +107,85 @@ contactsAPI.get("/", async (c) => {
   }
 });
 
-// 📌 Update Contact (PUT /api/contacts/:id)
-contactsAPI.put('/:id', async (c) => {
+// 📌 Retrieve a Contact by ID (GET /api/contacts/:id)
+contactsAPI.get("/:id", async (c) => {
   try {
-    const db = c.env.DB as D1Database
-    const contactId = c.req.param('id')
-    const updatedData = await c.req.json()
+    const db = c.env.DB as D1Database;
+    const contactId = c.req.param("id");
 
+    // ✅ Fetch the contact by ID
+    const result = await db.prepare(`SELECT * FROM contacts WHERE id = ?`).bind(contactId).first();
+
+    if (!result) {
+      return c.json({ error: "No contact found with this ID." }, 404);
+    }
+
+    return c.json({ contact: result });
+  } catch (error) {
+    return c.json({ error: error.toString() }, 500);
+  }
+});
+
+// 📌 Update Contact (PUT /api/contacts/:id)
+contactsAPI.put("/:id", async (c) => {
+  try {
+    const db = c.env.DB as D1Database;
+    const contactId = c.req.param("id"); // This retrieves the ID from the URL.
+    const updatedData = await c.req.json(); // This gets the updated contact data from the request body.
+
+    // 🔹 Ensure contact ID is valid
+    if (!contactId) {
+      return c.json({ error: "Contact ID is required." }, 400);
+    }
+
+    // 🔹 Ensure at least one field is provided for update
     if (Object.keys(updatedData).length === 0) {
-      return c.json({ error: 'No update data provided.' }, 400)
+      return c.json({ error: "No update data provided." }, 400);
     }
 
-    let setClauses = []
-    let values = []
+    // 🔹 Build the update query dynamically
+    let setClauses = [];
+    let values = [];
+
     for (const key in updatedData) {
-      setClauses.push(`${key} = ?`)
-      values.push(updatedData[key])
+      setClauses.push(`${key} = ?`);
+      values.push(updatedData[key]);
     }
 
-    const setClause = setClauses.join(', ')
-    const updateSQL = `UPDATE contacts SET ${setClause} WHERE id = ?`
-    values.push(contactId)
+    values.push(contactId); // Add ID at the end for `WHERE id = ?`
 
-    const result = await db
-      .prepare(updateSQL)
-      .bind(...values)
-      .run()
+    const setClause = setClauses.join(", ");
+    const updateSQL = `UPDATE contacts SET ${setClause} WHERE id = ?`;
+
+    const result = await db.prepare(updateSQL).bind(...values).run();
 
     if (result.success && result.meta?.changes > 0) {
-      return c.json({ message: 'Contact updated successfully!' })
+      return c.json({ message: "Contact updated successfully!" });
     } else {
-      return c.json({ error: 'No contact found with the provided ID.' }, 404)
+      return c.json({ error: "No contact found with the provided ID." }, 404);
     }
   } catch (error) {
-    return c.json({ error: error.toString() }, 500)
+    return c.json({ error: error.toString() }, 500);
   }
-})
+});
 
 // 📌 Delete Contact (DELETE /api/contacts/:id)
 contactsAPI.delete('/:id', async (c) => {
   try {
-    const db = c.env.DB as D1Database
-    const contactId = c.req.param('id')
+    const db = c.env.DB as D1Database;
+    const contactId = c.req.param('id');
 
-    const deleteSQL = `DELETE FROM contacts WHERE id = ?`
-    const result = await db.prepare(deleteSQL).bind(contactId).run()
+    const deleteSQL = `DELETE FROM contacts WHERE id = ?`;
+    const result = await db.prepare(deleteSQL).bind(contactId).run();
 
     if (result.success && result.meta?.changes > 0) {
-      return c.json({ message: 'Contact deleted successfully!' })
+      return c.json({ message: 'Contact deleted successfully!' });
     } else {
-      return c.json({ error: 'No contact found with the provided ID.' }, 404)
+      return c.json({ error: 'No contact found with the provided ID.' }, 404);
     }
   } catch (error) {
-    return c.json({ error: error.toString() }, 500)
+    return c.json({ error: error.toString() }, 500);
   }
-})
+});
 
-export default contactsAPI
+export default contactsAPI;
