@@ -38,34 +38,74 @@ contactsAPI.post('/', async (c) => {
   }
 })
 
-// 📌 Read All Contacts (GET /api/contacts) with Cloudflare KV Caching
-contactsAPI.get('/', async (c) => {
+// 📌 Retrieve Contacts (GET /api/contacts) with Search, Sort, and Filter
+contactsAPI.get("/", async (c) => {
   try {
-    const db = c.env.DB as D1Database // ✅ Get DB binding
-    const kv = c.env.CONTACT_CACHE // ✅ Get KV binding
-    const cacheKey = 'contacts_list' // ✅ KV Cache Key
+    const db = c.env.DB as D1Database;
+    const kv = c.env.CONTACT_CACHE; // ✅ Correct way to access KV storage
 
-    // 🟢 Step 1: Check if cached data exists
-    const cachedData = await kv.get(cacheKey)
+    const searchQuery = c.req.query("search");   // e.g., "john"
+    const sortParam = c.req.query("sort");       // e.g., "name_asc" or "created_at_desc"
+    const filterCategory = c.req.query("filter");// e.g., "friend"
+
+    // ✅ Build a unique cache key based on query parameters.
+    const cacheKey = `contacts_list?search=${searchQuery || ""}&sort=${sortParam || ""}&filter=${filterCategory || ""}`;
+
+    // ✅ Check if cached data exists in KV storage.
+    const cachedData = await kv.get(cacheKey);
     if (cachedData) {
-      console.log('📌 Returning cached contacts from KV...')
-      return c.json({ contacts: JSON.parse(cachedData), cached: true })
+      const contacts = JSON.parse(cachedData);
+      return c.json({ contacts, cached: true });
     }
 
-    // 🔵 Step 2: If no cache, fetch from DB
-    const selectSQL = `SELECT * FROM contacts ORDER BY created_at DESC`
-    const result = await db.prepare(selectSQL).all()
-    const contacts = result.results
+    // ✅ Construct dynamic WHERE clause for filtering and searching.
+    let whereClauses: string[] = [];
+    let queryValues: any[] = [];
 
-    // 🟣 Step 3: Store data in KV with a TTL of 60 seconds
-    await kv.put(cacheKey, JSON.stringify(contacts), { expirationTtl: 60 })
+    if (searchQuery) {
+      whereClauses.push("(name LIKE ? OR email LIKE ?)");
+      const searchTerm = `%${searchQuery}%`;
+      queryValues.push(searchTerm, searchTerm);
+    }
 
-    console.log('✅ Contacts fetched from DB and cached in KV.')
-    return c.json({ contacts, cached: false })
+    if (filterCategory) {
+      whereClauses.push("category = ?");
+      queryValues.push(filterCategory);
+    }
+
+    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+    // ✅ Construct dynamic ORDER BY clause for sorting.
+    let orderByClause = "ORDER BY created_at DESC"; // Default: newest first.
+    if (sortParam) {
+      if (sortParam === "name_asc") {
+        orderByClause = "ORDER BY name ASC";
+      } else if (sortParam === "name_desc") {
+        orderByClause = "ORDER BY name DESC";
+      } else if (sortParam === "created_at_asc") {
+        orderByClause = "ORDER BY created_at ASC";
+      } else if (sortParam === "created_at_desc") {
+        orderByClause = "ORDER BY created_at DESC";
+      }
+    }
+
+    // ✅ Assemble the final SQL query dynamically.
+    const selectSQL = `SELECT * FROM contacts ${whereClause} ${orderByClause}`;
+
+    // ✅ Execute the SQL query.
+    const result = await db.prepare(selectSQL).bind(...queryValues).all();
+    const contacts = result.results;
+
+    // ✅ Cache the query result for 60 seconds in KV.
+    await kv.put(cacheKey, JSON.stringify(contacts), { expirationTtl: 60 });
+
+    // ✅ Return the response.
+    return c.json({ contacts, cached: false });
+
   } catch (error) {
-    return c.json({ error: error.toString() }, 500)
+    return c.json({ error: error.toString() }, 500);
   }
-})
+});
 
 // 📌 Update Contact (PUT /api/contacts/:id)
 contactsAPI.put('/:id', async (c) => {
