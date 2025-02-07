@@ -1,6 +1,6 @@
 name = "hono-hello-world"
-type = "javascript"
 main = "./src/index.ts"
+compatibility_date = "2025-01-29"  # ✅ Add this if missing
 
 [[d1_databases]]
 binding = "DB"
