@@ -4,7 +4,7 @@ import dbAPI from "./db/route"; // ✅ Import DB initialization
 
 const app = new Hono();
 
-app.route("/contacts", contactsAPI); // ✅ /api/contacts
-app.route("/db", dbAPI); // ✅ /api/db (for initialization)
+app.route("/contacts", contactsAPI); // ✅ Correct `/api/contacts`
+app.route("/db", dbAPI); // ✅ Correct `/api/db`
 
 export default app;
