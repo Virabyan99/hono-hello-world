@@ -6,3 +6,8 @@ compatibility_date = "2025-01-29"  # ✅ Add this if missing
 binding = "DB"
 database_name = "contacts_db"
 database_id = "6d663581-85fe-4ce7-8f75-5c23548efb9d"
+
+# Cloudflare KV Storage binding
+[[kv_namespaces]]
+binding = "CONTACT_CACHE"
+id = "42c8fb63c1c345789f87de19980b5742"

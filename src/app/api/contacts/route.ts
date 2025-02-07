@@ -5,7 +5,7 @@ const contactsAPI = new Hono();
 // 📌 Create Contact (POST /api/contacts)
 contactsAPI.post("/", async (c) => {
   try {
-    const db = c.env.DB; // ✅ Get DB from context
+    const db = c.env.DB as D1Database; // ✅ Explicitly Type DB
     const newContact = await c.req.json();
 
     if (!newContact.name) {
@@ -34,13 +34,31 @@ contactsAPI.post("/", async (c) => {
   }
 });
 
-// 📌 Read All Contacts (GET /api/contacts) ✅ (FIXED & RESTORED)
+// 📌 Read All Contacts (GET /api/contacts) with Cloudflare KV Caching
 contactsAPI.get("/", async (c) => {
   try {
-    const db = c.env.DB; // ✅ Get DB from context
+    const db = c.env.DB as D1Database; // ✅ Get DB binding
+    const kv = c.env.CONTACT_CACHE; // ✅ Get KV binding
+    const cacheKey = "contacts_list"; // ✅ KV Cache Key
+
+    // 🟢 Step 1: Check if cached data exists
+    const cachedData = await kv.get(cacheKey);
+    if (cachedData) {
+      console.log("📌 Returning cached contacts from KV...");
+      return c.json({ contacts: JSON.parse(cachedData), cached: true });
+    }
+
+    // 🔵 Step 2: If no cache, fetch from DB
     const selectSQL = `SELECT * FROM contacts ORDER BY created_at DESC`;
     const result = await db.prepare(selectSQL).all();
-    return c.json({ contacts: result.results });
+    const contacts = result.results;
+
+    // 🟣 Step 3: Store data in KV with a TTL of 60 seconds
+    await kv.put(cacheKey, JSON.stringify(contacts), { expirationTtl: 60 });
+
+    console.log("✅ Contacts fetched from DB and cached in KV.");
+    return c.json({ contacts, cached: false });
+
   } catch (error) {
     return c.json({ error: error.toString() }, 500);
   }
@@ -49,7 +67,7 @@ contactsAPI.get("/", async (c) => {
 // 📌 Update Contact (PUT /api/contacts/:id)
 contactsAPI.put("/:id", async (c) => {
   try {
-    const db = c.env.DB;
+    const db = c.env.DB as D1Database;
     const contactId = c.req.param("id");
     const updatedData = await c.req.json();
 
@@ -57,8 +75,8 @@ contactsAPI.put("/:id", async (c) => {
       return c.json({ error: "No update data provided." }, 400);
     }
 
-    const setClauses = [];
-    const values = [];
+    let setClauses = [];
+    let values = [];
     for (const key in updatedData) {
       setClauses.push(`${key} = ?`);
       values.push(updatedData[key]);
@@ -83,7 +101,7 @@ contactsAPI.put("/:id", async (c) => {
 // 📌 Delete Contact (DELETE /api/contacts/:id)
 contactsAPI.delete("/:id", async (c) => {
   try {
-    const db = c.env.DB;
+    const db = c.env.DB as D1Database;
     const contactId = c.req.param("id");
 
     const deleteSQL = `DELETE FROM contacts WHERE id = ?`;
